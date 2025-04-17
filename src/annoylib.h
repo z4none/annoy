@@ -1098,14 +1098,18 @@ public:
     if (_on_disk) {
       return true;
     } else {
+      
       // Delete file if it already exists (See issue #335)
-#ifndef _MSC_VER
-      unlink(filename);
+#ifdef _MSC_VER
+      wchar_t *wfilename = new wchar_t[MAX_PATH];
+      MultiByteToWideChar(CP_UTF8, 0, filename, -1, wfilename, MAX_PATH);
+      _wunlink(wfilename);
+      FILE *f = _wfopen(wfilename, L"wb");
+      delete[] wfilename;
 #else
-      _unlink(filename);
-#endif
-
+unlink(filename);
       FILE *f = fopen(filename, "wb");
+#endif
       if (f == NULL) {
         set_error_from_errno(error, "Unable to open");
         return false;
@@ -1165,10 +1169,12 @@ public:
   }
 
   bool load(const char* filename, bool prefault=false, char** error=NULL) {
-#ifndef _MSC_VER
-    _fd = open(filename, O_RDONLY, (int)0400);
+#ifdef _MSC_VER
+    wchar_t wfilename[MAX_PATH];
+    MultiByteToWideChar(CP_UTF8, 0, filename, -1, wfilename, MAX_PATH);
+    _fd = _wopen(wfilename, _O_RDONLY, (int)0400);
 #else
-    _fd = _open(filename, _O_RDONLY, (int)0400);
+    _fd = open(filename, O_RDONLY, (int)0400);
 #endif
     if (_fd == -1) {
       set_error_from_errno(error, "Unable to open");
